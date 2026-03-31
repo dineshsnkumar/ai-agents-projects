@@ -1,5 +1,6 @@
 import os
 import re
+import json
 from groq import Groq
 from dotenv import load_dotenv
 
@@ -18,7 +19,7 @@ def generate_code(question:str, model:str) -> str | None:
         User Query:
         {question}
 
-        Return ONLY the code wrapped in <execute_python> tags
+        Return a strict code wrapped in <execute_python> </execute_python> tags
     """
     chat_completion = client.chat.completions.create(
       messages=[
@@ -59,8 +60,34 @@ def reflect_code(question:str, code_original:str, model:str) -> tuple[str, str] 
     Return a strict JSON object with two fields
     - feedback: evaluation and suggestions
     - updated_code: final python code to run
-
     """
+
+    chat_completion = client.chat.completions.create(
+      messages=[
+          {
+              "role": "user",
+              "content": question,
+          },
+          {
+              "role": "user",
+              "content": code_original,
+          },
+          {
+            "role": "system",
+            "content": system_prompt,
+        }
+      ],
+      model=model,
+    )
+    content = chat_completion.choices[0].message.content
+    if content:
+        lines = content.strip().splitlines()
+        json_line = lines[0].strip() if lines else ""
+        print(json_line)
+        # obj = json.loads(json_line)
+
+        print(lines)
+
     pass
 
 
@@ -72,9 +99,7 @@ def code_workflow():
         match = re.search(r"<execute_python>([\s\S]*?)</execute_python", code_version_one)
         if match:
             code = match.group(1).strip()
-            print(code)
-
-    
+            reflect_code(question=user_question, code_original=code, model="openai/gpt-oss-120b")
 
   
 

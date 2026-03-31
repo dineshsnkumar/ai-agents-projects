@@ -10,7 +10,7 @@ A coding agent that use reflection design pattern to generate and test python co
 ### Reflection Design Pattern
 
 - User sends a request to generate the code to `qwen3-32b` model
-- The returned code is to tested using another model to check for errors and to make the improvements
+- The returned code is to tested using `openai/gpt-oss-120b` model to check for errors and to make the improvements
 - The updated code is returned to the user
 
 ### Evals
