@@ -39,10 +39,9 @@ def generate_code(question:str, model:str) -> str | None:
     return respone
 
 
-def reflect_code(question:str, code_original:str, model:str) -> tuple[str, str] | None:
+def reflect_code(question:str, code_original:str, model:str) -> str | None:
     """
     Evaluate the Python code and if necessary improve the code.
-    Returns (feedback, updated_code)
     """
     system_prompt = f"""
     You are a Python code reviewer and refiner.
@@ -57,9 +56,8 @@ def reflect_code(question:str, code_original:str, model:str) -> tuple[str, str] 
     Step 2: If the Orignial code could be improved, give the updated code.
     If the Orignial code is already correct, return it unchanged
 
-    Return a strict JSON object with two fields
-    - feedback: evaluation and suggestions
-    - updated_code: final python code to run
+    Return feedback in a paragraph form
+
     """
 
     chat_completion = client.chat.completions.create(
@@ -80,27 +78,69 @@ def reflect_code(question:str, code_original:str, model:str) -> tuple[str, str] 
       model=model,
     )
     content = chat_completion.choices[0].message.content
-    if content:
-        lines = content.strip().splitlines()
-        json_line = lines[0].strip() if lines else ""
-        print(json_line)
-        # obj = json.loads(json_line)
+    return content
 
-        print(lines)
 
-    pass
+def updated_code(question:str, code_original:str, feedback:str,  model:str) -> str | None:
+    """
+    Evaluate the Python code and if necessary improve the code.
+    """
+    system_prompt = f"""
+    You are a Python code reviewer and refiner. Given user question, Original code and reflection, retrun the 
+    updated code 
+
+    User Question 
+    {question}
+
+    Orignial code
+    {code_original}
+
+    Feedback 
+    {feedback}
+
+    Return the updated code 
+    """
+    chat_completion = client.chat.completions.create(
+      messages=[
+          {
+              "role": "user",
+              "content": question,
+          },
+          {
+              "role": "user",
+              "content": code_original,
+          },
+          {
+              "role": "user",
+              "content": feedback,
+          },
+          {
+            "role": "system",
+            "content": system_prompt,
+        }
+      ],
+      model=model,
+    )
+    content = chat_completion.choices[0].message.content
+    return content
+
+
 
 
 def code_workflow():
     user_question = input("Hi, How can I help you with today? ")
     code_version_one = generate_code(user_question, model= "qwen/qwen3-32b") 
+    print(code_version_one)
 
     if code_version_one:
         match = re.search(r"<execute_python>([\s\S]*?)</execute_python", code_version_one)
         if match:
             code = match.group(1).strip()
-            reflect_code(question=user_question, code_original=code, model="openai/gpt-oss-120b")
+            feedback = reflect_code(question=user_question, code_original=code, model="openai/gpt-oss-120b")
+            if feedback and code:
+                refined_code = updated_code(user_question, code, feedback, model="openai/gpt-oss-120b")
+                return refined_code
+
 
   
-
 code_workflow()
